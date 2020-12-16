@@ -1,0 +1,986 @@
+---
+title: "Final Project"
+author: "Ray"
+date: "March, 31, 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+Section 1-Predicting Current Season Win Shares
+
+```{r}
+#Importing Data
+setwd("D:/02Grad School/R-Dir/data")
+NBA= read.csv("Seasons_stats_complete.csv",stringsAsFactors=TRUE)
+str(NBA)
+```
+
+```{r}
+#Exploring the data, numerical and categorical variables 
+
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+
+#Selecting correlated numerical variables
+num1<-dplyr::select_if(NBA, is.numeric)
+num1
+WinShares=NBA$WS
+corr1<-cor(WinShares, num1)
+corr1
+correlated1= which(corr1>0)
+correlated1
+colnames(correlated1)
+summary(correlated1)
+
+#Scatterplot of Correlated Numerical Variables
+ggplot(NBA,aes(x=Year, y=WS)) + geom_point()
+ggplot(NBA,aes(x=Age, y=WS)) + geom_point()
+ggplot(NBA,aes(x=BLK, y=WS)) + geom_point()
+ggplot(NBA,aes(x=G, y=WS)) + geom_point()
+ggplot(NBA,aes(x=PER, y=WS)) + geom_point()
+ggplot(NBA,aes(x=TS., y=WS)) + geom_point()
+ggplot(NBA,aes(x=X3PAr, y=WS)) + geom_point()
+ggplot(NBA,aes(x=FTr, y=WS)) + geom_point()
+ggplot(NBA,aes(x=BLK., y=WS)) + geom_point()
+ggplot(NBA,aes(x=ORB., y=WS)) + geom_point()
+ggplot(NBA,aes(x=DRB., y=WS)) + geom_point()
+ggplot(NBA,aes(x=TRB., y=WS)) + geom_point()
+ggplot(NBA,aes(x=STL., y=WS)) + geom_point()
+ggplot(NBA,aes(x=TOV., y=WS)) + geom_point()
+ggplot(NBA,aes(x=USG., y=WS)) + geom_point()
+ggplot(NBA,aes(x=OWS, y=WS)) + geom_point()
+ggplot(NBA,aes(x=VORP, y=WS)) + geom_point()
+ggplot(NBA,aes(x=DWS, y=WS)) + geom_point()
+ggplot(NBA,aes(x=WS.48, y=WS)) + geom_point()
+ggplot(NBA,aes(x=OBPM, y=WS)) + geom_point()
+ggplot(NBA,aes(x=DBPM, y=WS)) + geom_point()
+ggplot(NBA,aes(x=BPM, y=WS)) + geom_point()
+ggplot(NBA,aes(x=X3P, y=WS)) + geom_point()
+ggplot(NBA,aes(x=X3P., y=WS)) + geom_point()
+ggplot(NBA,aes(x=X3PA, y=WS)) + geom_point()
+ggplot(NBA,aes(x=X2PA, y=WS)) + geom_point()
+ggplot(NBA,aes(x=X2P., y=WS)) + geom_point()
+ggplot(NBA,aes(x=X2P, y=WS)) + geom_point()
+ggplot(NBA,aes(x=FT, y=WS)) + geom_point()
+ggplot(NBA,aes(x=FTA, y=WS)) + geom_point()
+ggplot(NBA,aes(x=FT., y=WS)) + geom_point()
+ggplot(NBA,aes(x=ORB, y=WS)) + geom_point()
+ggplot(NBA,aes(x=DRB, y=WS)) + geom_point()
+ggplot(NBA,aes(x=TRB, y=WS)) + geom_point()
+ggplot(NBA,aes(x=AST, y=WS)) + geom_point()
+ggplot(NBA,aes(x=STL, y=WS)) + geom_point()
+ggplot(NBA,aes(x=FG., y=WS)) + geom_point()
+ggplot(NBA,aes(x=FG, y=WS)) + geom_point()
+ggplot(NBA,aes(x=FGA, y=WS)) + geom_point()
+ggplot(NBA,aes(x=eFG., y=WS)) + geom_point()
+
+#Selecting categorical variables
+categ= NBA %>% select_if(negate(is.numeric))
+str(categ)
+
+#Bar plots of Categorical data
+ggplot(NBA, aes(x=Pos,y=WinShares)) + geom_bar(stat="identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+ggplot(NBA, aes(x=year,y=WinShares)) + geom_bar(stat="identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+ggplot(NBA, aes(x=Player,y=WinShares)) + geom_bar(stat="identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+#Boxplots of Categorical data
+plot(NBA$Pos ~ WinShares)
+plot(NBA$Tm ~ WinShares)
+plot(NBA$Player ~ WinShares )
+
+#Histogram: This shows that Win Shares are very right skewed. Many players do not contribute at all due to lack of playing time, injuries, etc.
+NBA1<-select(NBA, -contains("WinShares"))
+ggplot(NBA1, aes(x=WinShares)) + geom_histogram()
+
+#Summary of the WinShares variable
+summary(WinShares)
+
+#Summary of minutes played by NBA players
+summary(NBA$MP)
+```
+
+```{r}
+#Selecting superset of variables from the nba set 
+library(dplyr)
+NBA=NBA %>% 
+  arrange(Year, Player) %>% 
+  group_by(Player) %>% 
+  arrange(Year) %>%
+  #Not including Defensive or Offensive Win Shares because they add up Win Shares directly.
+  select(Tm, Pos, Player, Year, Age, MP, G, PER, TS., X3PAr, FTr, ORB., TRB., DRB., STL., BLK., TOV., USG., OBPM, BPM, DBPM, VORP, FG, FGA, FG., X3P, X3PA, X3P., X2P, X2PA, X2P., eFG., FT, FTA, FT., ORB, DRB, TRB, AST, STL, BLK, WS) %>% 
+filter(Year >= 1977)%>%  
+#294 minutes per game is the 1st quantile of minutes played per season. Many players do not play a single minute in the NBA but are on a team.
+filter(MP >= 294)
+
+```
+```{r}
+#Checking Missing Cases
+missing<-sum(!complete.cases(NBA))
+missing
+
+cm=colMeans(is.na(NBA))
+cm
+counts=which(cm>0.0)
+counts
+length(counts)
+cm[counts]
+
+
+WinShares = NBA$WS
+
+#Scaling, Taking out Categorical variables, Year, and the Winshare dependent variables
+NBA1<- as.data.frame(scale(NBA[, -c(1, 2, 3, 42)]))
+
+#Binding the variables together
+NBA = cbind(NBA1, WinShares)
+
+#Checking for missing cases
+missing<-sum(!complete.cases(WinShares))
+missing
+
+
+```
+
+
+```{r}
+#Splitting the data
+set.seed(1)
+library(caret)
+
+indexTrain <- createDataPartition(NBA$WinShares, p = 0.9,list = FALSE)
+NBA_train <- NBA[indexTrain,]
+NBA_test <- NBA[-indexTrain,]
+
+indexTrainValidation <- createDataPartition(y = NBA_train$WinShares, p = 0.9,list = FALSE)
+NBA_val <- NBA_train[-indexTrainValidation,]
+```
+
+```{r}
+#Linear Regression
+
+set.seed(1)
+library(caret)
+train.control = trainControl(method = "cv", number = 10)
+linearRegression <- train(WinShares ~., data = NBA_train, method = "lm", trControl = train.control)
+print(linearRegression)
+summary(linearRegression)
+
+#Checking the RMSE of the WinShares of the current year
+predictionsLR= predict(linearRegression, NBA_test)
+RMSE(predictionsLR, NBA_test$WinShares)
+R2(predictionsLR, NBA_test$WinShares)
+
+#Comparing to the Standard Deviation of the WinShares Column
+sd(NBA_train$WinShares)
+sd(NBA_test$WinShares)
+sd(WinShares)
+
+```
+
+```{r}
+#Random Forest Model
+
+library(caret)
+library(randomForest)
+set.seed(1)
+
+ctrl <- trainControl(method = "cv", number = 10)
+grid_rf <- expand.grid(mtry = c(2, 4, 8, 16))
+
+rf<- train(WinShares ~ ., data = NBA_train, importance=T, method = "rf", trControl = ctrl, tuneGrid = grid_rf)
+
+varImp(rf)
+
+predictionsRF <- predict(rf, NBA_test)
+RMSE(predictionsRF, NBA_test$WinShares)
+R2(predictionsRF, NBA_test$WinShares)
+```
+20 most important variables shown (out of 38)
+
+TS.   100.00
+TOV.   84.13
+G      52.34
+AST    47.82
+VORP   43.83
+USG.   43.67
+PER    38.78
+FT.    36.88
+FG.    36.61
+ORB    35.86
+eFG.   34.99
+TRB.   27.99
+X2P.   27.75
+TRB    27.65
+STL.   27.00
+FTr    23.84
+STL    23.12
+ORB.   22.95
+MP     22.52
+DRB    20.98
+
+
+```{r}
+
+#Lasso
+
+library(glmnet)
+set.seed(1)
+WinShares = NBA$WinShares
+lasso <- train(
+WinShares ~. , data=NBA_train, method = "glmnet",
+trControl = trainControl("cv", number = 10),
+tuneGrid = expand.grid(alpha = 1, lambda = 10^seq(-3, 1, length =
+100)))
+lasso
+
+coef(lasso$finalModel, lasso$bestTune$lambda)
+predictionsL <- predict(lasso, NBA_test)
+RMSE(predictionsL, NBA_test$WinShares)
+R2(predictionsL, NBA_test$WinShares)
+
+```
+
+
+Section 2 - Predicting The NEXT Season's Winshares
+
+Importing Data 
+```{r}
+setwd("D:/02Grad School/R-Dir/data")
+NBA= read.csv("Seasons_stats_complete.csv",stringsAsFactors=TRUE)
+str(NBA)
+
+```
+```{r}
+library(dplyr)
+NBA=NBA %>% 
+  arrange(Year, Player) %>% 
+  group_by(Player) %>% 
+  arrange(Year) %>%
+  #Leading WS to the following year
+  mutate(WS_next_year=lead(WS),Year_Count= dplyr::row_number()) %>% 
+  ungroup() %>% 
+  filter(Year_Count > 1) %>% 
+  filter(!is.na(WS_next_year)) %>% 
+  select(Tm, Pos, Player, Year, Year_Count, Age, MP, G, PER, TS., X3PAr, FTr, ORB., TRB., DRB., STL., BLK., TOV., USG., OBPM, BPM, DBPM, VORP, FG, FGA, FG., X3P, X3PA, X3P., X2P, X2PA, X2P., eFG., FT, FTA, FT., ORB, DRB, TRB, AST, STL, BLK, WS, WS_next_year) %>% 
+filter(Year >= 1999) %>% 
+filter(MP >= 1003) %>% 
+filter(G >= 57)
+
+```
+
+
+```{r}
+#Selecting correlated numerical variables
+num2<-dplyr::select_if(NBA, is.numeric)
+num2
+
+corr2<-cor(NBA$WS_next_year, num2)
+corr2
+correlated2= which(corr2>0)
+correlated2
+summary(correlated2)
+
+
+```
+
+
+```{r}
+library(ggplot2)
+#Checking Missing Cases
+missing<-sum(!complete.cases(NBA))
+missing
+
+cm=colMeans(is.na(NBA))
+cm
+counts=which(cm>0.0)
+counts
+length(counts)
+cm[counts]
+
+#Assigning a variable to Win Shares
+WinShares = NBA$WS
+
+#Assigning a variable to Win Shares for the next year
+WinShares_Next_Year = NBA$WS_next_year
+
+#Scaling, Taking out Categorical variables, Year, and the Winshare_Next Year dependent variable
+NBA1<- as.data.frame(scale(NBA[, -c(1, 2, 3, 4, 44)]))
+
+#Binding the variables together
+NBA = cbind(NBA1, WinShares_Next_Year)
+
+#Histogram
+histogram = ggplot(NBA, aes(x=WinShares)) + geom_histogram()
+histogram
+
+#Checking for missing cases
+missing<-sum(!complete.cases(NBA))
+missing
+
+
+```
+
+
+
+```{r}
+#Splitting the data
+
+set.seed(1)
+library(caret)
+
+
+indexTrain <- createDataPartition(NBA$WinShares_Next_Year, p = 0.9,list = FALSE)
+NBA_train <- NBA[indexTrain,]
+NBA_test <- NBA[-indexTrain,]
+
+indexTrainValidation <- createDataPartition(y = NBA_train$WinShares_Next_Year, p = 0.9,list = FALSE)
+NBA_val <- NBA_train[-indexTrainValidation,]
+```
+
+```{r}
+#Lasso
+
+library(glmnet)
+set.seed(1)
+WinShares_Next_Year = NBA$WinShares_Next_Year
+lasso <- train(
+WinShares_Next_Year ~. , data=NBA_train, method = "glmnet",
+trControl = trainControl("cv", number = 10),
+tuneGrid = expand.grid(alpha = 1, lambda = 10^seq(-3, 1, length =
+100)))
+lasso
+
+coef(lasso$finalModel, lasso$bestTune$lambda)
+predictionsL <- predict(lasso, NBA_test)
+RMSE(predictionsL, NBA_test$WinShares_Next_Year)
+R2(predictionsL, NBA_test$WinShares_Next_Year)
+
+
+A = coef(lasso$finalModel, lasso$bestTune$lambda)
+
+Var_Check = rownames(A)[A @ i]
+Var_Check
+```
+
+
+```{r}
+NBA=NBA %>%
+  select("Year_Count" , "Age"  , "G" , "PER" , "TS.", "X3PAr", "FTr", "ORB.", "DRB.", "STL.", "TOV.", "USG.", "OBPM", "BPM" , "VORP", "X3P", "X3PA", "X3P." , "X2PA", "X2P.", "eFG.", "FT.", "ORB", "DRB", "BLK", "WS", "WinShares_Next_Year")
+
+indexTrain <- createDataPartition(NBA$WinShares_Next_Year, p = 0.9,list = FALSE)
+NBA_train <- NBA[indexTrain,]
+NBA_test <- NBA[-indexTrain,]
+
+indexTrainValidation <- createDataPartition(y = NBA_train$WinShares_Next_Year, p = 0.9,list = FALSE)
+NBA_val <- NBA_train[-indexTrainValidation,]
+
+```
+
+```{r}
+#Linear Regression
+set.seed(1)
+library(caret)
+train.control = trainControl(method = "cv", number = 10)
+linearRegression <- train(WinShares_Next_Year ~., data = NBA_train, method = "lm", trControl = train.control)
+print(linearRegression)
+summary(linearRegression)
+
+#Checking the RMSE of the WinShares Next Year
+predictionsLR= predict(linearRegression, NBA_test)
+RMSE(predictionsLR, NBA_test$WinShares_Next_Year)
+R2(predictionsLR, NBA_test$WinShares_Next_Year)
+
+#Comparing to the Standard Deviation of the WinShares Next Year Column
+sd(WinShares_Next_Year)
+
+```
+
+```{r}
+#Random Forest Model
+
+library(caret)
+library(randomForest)
+set.seed(1)
+
+ctrl <- trainControl(method = "cv", number = 10)
+grid_rf <- expand.grid(mtry = c(2, 4, 8, 10))
+
+rf<- train(WinShares_Next_Year ~ ., data = NBA_train, importance=T, method = "rf", trControl = ctrl, tuneGrid = grid_rf)
+
+varImp(rf)
+
+predictionsRF <- predict(rf, NBA_test)
+RMSE(predictionsRF, NBA_test$WinShares_Next_Year)
+R2(predictionsRF, NBA_test$WinShares_Next_Year)
+```
+20 most important variables shown (out of 26)
+        
+WS          100.00
+BPM          78.69
+VORP         77.70
+X2PA         65.15
+OBPM         64.47
+PER          61.40
+X3PAr        53.41
+Age          52.72
+ORB          50.56
+ORB.         49.92
+DRB          49.87
+DRB.         49.54
+Year_Count   47.23
+BLK          41.96
+X3PA         39.21
+X3P          37.08
+TS.          35.44
+eFG.         33.16
+X2P.         28.97
+X3P.         28.90
+
+
+```{r}
+#Ridge
+
+set.seed(1)
+ridge <- train(
+WinShares_Next_Year ~., data = NBA_train, method = "glmnet",
+trControl = trainControl("cv", number = 10),
+tuneGrid = expand.grid(alpha = 0, lambda = 10^seq(-3, 1, length =
+100)))
+
+predictionsRidge <- predict(ridge,NBA_test)
+RMSE(predictionsRidge, NBA_test$WinShares_Next_Year)
+R2(predictionsRidge, NBA_test$WinShares_Next_Year)
+```
+
+```{r}
+#Elastic Net
+
+set.seed(1)
+enet <- train(
+WinShares_Next_Year ~., data = NBA_train, method = "glmnet",
+trControl = trainControl("cv", number = 10),
+tuneGrid = expand.grid(alpha =seq(0,1, length=10), lambda = 10^seq(-
+3, 1, length = 100)))
+
+predictionsElasticNet <- predict(enet, NBA_test)
+RMSE(predictionsElasticNet, NBA_test$WinShares_Next_Year)
+R2(predictionsElasticNet, NBA_test$WinShares_Next_Year)
+```
+
+```{r}
+#Gradient Boost Model
+
+set.seed(1)
+gbm <- train(
+WinShares_Next_Year ~., data = NBA_train, method = "gbm", preProc="nzv",
+trControl = trainControl("cv", number = 10))
+gbm
+
+predictionsGBM <- predict(gbm,NBA_test)
+RMSE(predictionsGBM, NBA_test$WinShares_Next_Year)
+R2(predictionsGBM, NBA_test$WinShares_Next_Year)
+```
+
+
+```{r}
+NBA_train
+NBA_test
+NBA_val
+
+#Saving as a matrix
+NBA_valy<-NBA_val[, c(27)]
+NBA_valx<-NBA_val[, -c(27)]
+NBA_valx<-as.matrix(NBA_valx)
+NBA_valy<-as.matrix(NBA_valy)
+
+NBA_testy<-NBA_test[, c(27)]
+NBA_testx<-NBA_test[, -c(27)]
+NBA_testx<-as.matrix(NBA_testx)
+NBA_testy<-as.matrix(NBA_testy)
+
+NBA_trainy<-NBA_train[, c(27)]
+NBA_trainx<-NBA_train[, -c(27)]
+NBA_trainx<-as.matrix(NBA_trainx)
+NBA_trainy<-as.matrix(NBA_trainy)
+```
+
+
+
+```{r}
+#ANN Model
+
+library(keras)
+set.seed(1)
+model <- keras_model_sequential() %>% 
+layer_dense(units = 50, activation = "relu", input_shape = dim(NBA_trainx)[2]) %>% 
+layer_dropout(0.5) %>% 
+layer_dense(units = 1)
+
+model %>% 
+compile(loss = "mse",
+optimizer = "adam")
+
+model %>% fit(NBA_trainx,
+NBA_trainy,
+batch_size=1000,
+epochs = 500,
+validation_data=list(NBA_valx, NBA_valy))
+
+```
+
+```{r}
+#Using flags to find the best parameters
+library(tfruns)
+runs <- tuning_run("test.R",
+flags = list(
+nodes1 = c(50, 100, 150),
+nodes2=c(50, 100, 150),
+learning_rate = c(0.01, 0.05, 0.001, 0.0001),                
+batch_size=c(100,200,500),
+epochs=c(30,50,100),
+activation1=c("relu","sigmoid","tanh"),
+activation2=c("relu","sigmoid","tanh"),
+dropout1=c(0.05, 0.1, 0.2, 0.5),
+dropout2=c(0.05, 0.1, 0.2, 0.5)
+ ),
+sample = 0.002)
+runs
+
+view_run(runs$run_dir[1])
+```
+```{r}
+#Using Best Numbers
+library(keras)
+set.seed(1)
+model <- keras_model_sequential() %>% 
+layer_dense(units =150, activation = "relu", input_shape = dim(NBA_trainx)[2]) %>% 
+layer_dropout(0.5) %>% 
+layer_dense(units = 1)
+
+model %>% 
+compile(loss = "mse",
+optimizer = "adam")
+
+model %>% fit(NBA_trainx,
+NBA_trainy,
+batch_size=1000,
+epochs = 500)
+
+#Calculating RMSE on test data
+predictions=model %>% predict(NBA_testx)
+
+rmse= function(x,y){
+return((mean((x - y)^2))^0.5)
+}
+
+#RMSE for the ANN model
+ann=rmse(predictions, NBA_testy)
+ann
+
+```
+
+
+```{r}
+#Re-creating the train data set to compare with other models
+library(caret)
+library(keras)
+indexTrain <- createDataPartition(NBA$WinShares_Next_Year, p = 0.9,list = FALSE)
+NBA_train<- NBA[indexTrain,]
+NBA_test<- NBA[-indexTrain,]
+
+NBA_train_re_y<-NBA_train[, c(27)]
+NBA_train_re_x<-NBA_train[, -c(27)]
+NBA_train_rex<-as.matrix(NBA_train_re_x)
+NBA_train_rey<-as.matrix(NBA_train_re_y)
+
+```
+```{r}
+library(keras)
+set.seed(1)
+model <- keras_model_sequential() %>% 
+layer_dense(units = 150, activation = "relu", input_shape = dim(NBA_train_re_x)[2]) %>% 
+layer_dropout(0.5) %>% 
+layer_dense(units = 1)
+
+model %>% 
+compile(loss = "mse",
+optimizer = "adam")
+
+model %>% fit(NBA_train_rex,
+NBA_train_rey,
+batch_size=1000,
+epochs = 500)
+
+```
+```{r}
+#Calculating RMSE on test data
+predictions=model %>% predict(NBA_testx)
+
+rmse= function(x,y){
+return((mean((x - y)^2))^0.5)
+}
+
+#RMSE for the ANN model
+rmse(predictions, NBA_testy)
+R2(predictions, NBA_testy)
+
+```
+Which model ( which hyper-parameter combination) resulted in the best accuracy on the
+validation data?
+
+Answer: The best numbers were at the 1st run with the following:
+Metrics
+loss	5.0459
+val_loss	4.4683
+
+Flags
+nodes	150
+batch_size	1000
+activation	relu
+learning_rate	0.0001
+epochs	50
+
+
+Does your best model still overfit?
+Answer: With my best numbers, it does not overfit with a lower validation loss.
+
+RMSE for best numbers:  [1] 2.020652
+
+```{r}
+#Comparing Resamples
+
+compare=resamples(list(L=lasso, E=enet, G=gbm, R=ridge,  RF=rf))
+summary(compare)
+
+```
+
+
+
+Section 3 - Future All Stars
+
+```{r}
+setwd("D:/02Grad School/R-Dir/data")
+NBA= read.csv("Seasons_stats_complete.csv",stringsAsFactors=TRUE)
+AllStars= read.csv("AllStarsHistory.csv",stringsAsFactors=TRUE)
+```
+```{r}
+#Filtering for the last 20 Seasons
+
+library(dplyr)
+NBA1999=NBA %>% 
+  arrange(Year, Player) %>% 
+  mutate(Player =as.character(Player)) %>% 
+mutate(Player = case_when(stringr:: str_detect(Player, "Yao Ming*") ~ "Yao Ming",TRUE~Player))%>%
+  mutate(Player =as.character(Player)) %>% 
+mutate(Player = case_when(stringr:: str_detect(Player, "Nikola V") ~ "Nikola Vucevic",TRUE~Player))%>%
+   mutate(Player =as.character(Player)) %>% 
+mutate(Player = case_when(stringr:: str_detect(Player, "Nikola J") ~ "Nikola Jokic",TRUE~Player))%>%
+  group_by(Player) %>% 
+  arrange(Year) %>%
+  mutate(Year_Count= dplyr::row_number()) %>%
+  filter(Year_Count > 1) %>%
+  filter(Year >= 1999) %>%
+  select(Player)
+
+```
+
+```{r}
+#Filtering for all players in their first rookie season since 1999
+library(dplyr)
+NBA=NBA %>% 
+  arrange(Year, Player) %>% 
+   mutate(Player =as.character(Player)) %>% 
+mutate(Player = case_when(stringr:: str_detect(Player, "Yao Ming*") ~ "Yao Ming",TRUE~Player))%>%
+  mutate(Player =as.character(Player)) %>% 
+mutate(Player = case_when(stringr:: str_detect(Player, "Nikola V") ~ "Nikola Vucevic",TRUE~Player))%>%
+   mutate(Player =as.character(Player)) %>% 
+mutate(Player = case_when(stringr:: str_detect(Player, "Nikola J") ~ "Nikola Jokic",TRUE~Player))%>%
+  group_by(Player) %>% 
+  arrange(Year) %>%
+  mutate(Year_Count= dplyr::row_number()) %>% 
+  ungroup() %>% 
+   filter(Year_Count == 1) %>% 
+ filter(Year >= 1999)
+
+```
+```{r}
+library(tidyverse)
+NBA1999R= distinct(NBA %>% inner_join(NBA1999))
+
+```
+
+```{r}
+#Finding all of the NBA players who have been an All-Star at some point
+AllStarsR= NBA1999R %>% inner_join(AllStars)
+
+```
+
+
+
+```{r}
+#Comparing All Stars with the Top Win Shares performers
+library(dplyr)
+NBATopWS=NBA %>% 
+  arrange(Year, Player, WS) %>% 
+  group_by(Player) %>% 
+  arrange(desc(WS)) %>%
+  select(Player, Player, WS)
+
+AllStars=AllStars %>% inner_join(NBA)%>% 
+arrange(Year, Player, WS) %>% 
+  group_by(Player) %>% 
+  arrange(desc(WS))
+str(AllStars$WS)
+
+```
+
+
+```{r}
+library(ggplot2)
+ggplot(AllStars, aes(x=Player,y=WS)) + geom_bar(stat="identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+#Histogram
+ggplot(AllStars, aes(x=WS)) + geom_histogram()
+
+```
+
+
+
+```{r}
+library(dplyr)
+AllStarPred=
+  NBA %>% 
+  select(Player) %>% 
+  inner_join(NBA1999R, by= "Player") %>% 
+  left_join(AllStarsR %>% select(Player) %>% mutate(AllStar = 1)) %>% 
+  mutate(AllStar = replace_na(AllStar, 0))
+
+  
+str(AllStarPred$AllStar)
+
+
+```
+
+
+```{r}
+
+#Scaling
+AllStar = AllStarPred$AllStar
+AllStarPred1<- as.data.frame(scale(AllStarPred[, -c(1, 2, 4, 6, 51, 52)]))
+
+
+#Binding the variables together
+AllStarPred = cbind(AllStarPred1, AllStar)
+summary(AllStarPred$MP)
+
+```
+
+```{r}
+#Correlation
+library(dplyr)
+
+#Selecting correlated numerical variables
+num<-dplyr::select_if(AllStarPred, is.numeric)
+num
+
+corr<-cor(AllStar, num)
+quantile(corr)
+correlated= which(corr>0)
+correlated= AllStarPred[,correlated]
+str(correlated)
+summary(correlated)
+names(correlated)
+
+```
+
+```{r}
+AllStarPred = AllStarPred %>%
+  mutate(AllStar = factor(AllStar))
+set.seed(1)
+test_sample = sample(1219, 200)
+AllStarPred_test = AllStarPred[test_sample,]
+AllStarPred_train = AllStarPred[-test_sample,]
+
+```
+
+```{r}
+#Lasso
+
+library(ROCR)
+library(caret)
+library(glmnet)
+set.seed(1)
+lasso <- train(
+  AllStar ~. , data=AllStarPred_train, method = "glmnet", metric="Kappa",
+  trControl = trainControl("cv", number = 10),
+  tuneGrid = expand.grid(alpha = 1, lambda = 10^seq(-3, 3, length =
+                                                      100)))
+
+table(AllStarPred_test$AllStar)
+predict.lasso = predict(lasso, AllStarPred_test)
+confusionMatrix(predict.lasso, AllStarPred_test$AllStar)
+
+lasso_predictions_prob=predict(lasso, AllStarPred_test, type="prob")
+head(lasso_predictions_prob)
+
+pred_lasso = prediction(lasso_predictions_prob$`1`, AllStarPred_test$AllStar)
+performance(pred_lasso, measure = "auc")@y.values
+perf <- performance(pred_lasso, measure = "tpr", x.measure = "fpr")
+
+#Plotting the ROC Curve
+plot(perf, col = "blue")
+
+
+A = coef(lasso$finalModel, lasso$bestTune$lambda)
+A
+rownames(A)[A @ i]
+
+
+```
+AUC: 0.8364055
+Accuracy : 0.94 
+
+
+Lasso selected these variables:
+Year        -3.502742e-01
+Age         -1.048057e+00
+G            3.588352e-01        
+X3PAr       -1.724365e-01
+FTr          1.164899e-02        
+TRB.         1.906031e-01
+AST.         2.092446e-01      
+BLK.         2.611002e-01        
+USG.         1.831474e-01         
+DWS          7.865672e-02
+WS           3.143331e-01          
+DBPM         3.421913e-06
+BPM          4.996928e-01
+VORP         2.027867e-01          
+X3PA        -1.137637e-01
+X3P.         2.279535e-01     
+X2PA         7.398146e-02          
+eFG.        -1.771028e-01
+FT           1.972875e-01          
+FT.          2.396745e-01
+
+
+```{r}
+
+AllStarPred = AllStarPred %>%
+  mutate(AllStar = factor(AllStar))
+set.seed(1)
+test_sample = sample(1219, 200)
+AllStarPred_test = AllStarPred[test_sample,]
+AllStarPred_train = AllStarPred[-test_sample,]
+
+```
+
+```{r}
+#Ridge
+
+set.seed(1)
+ridge <- train(
+AllStar ~., data = AllStarPred_train, method = "glmnet", metric="Kappa",
+trControl = trainControl("cv", number = 10),
+tuneGrid = expand.grid(alpha = 0, lambda = 10^seq(-3, 1, length =
+100)))
+
+table(AllStarPred_test$AllStar)
+predict.ridge = predict(ridge, AllStarPred_test)
+confusionMatrix(predict.ridge, AllStarPred_test$AllStar)
+
+ridge_predictions_prob=predict(ridge, AllStarPred_test, type="prob")
+
+pred_ridge = prediction(ridge_predictions_prob$`1`, AllStarPred_test$AllStar)
+performance(pred_ridge, measure = "auc")@y.values
+
+perfR <- performance(pred_ridge, measure = "tpr", x.measure = "fpr")
+
+#Plotting the ROC Curve
+plot(perfR, col = "green")
+
+
+
+```
+AUC: 0.8379416
+Accuracy : 0.935
+
+
+```{r}
+#Elastic Net
+
+set.seed(1)
+enet <- train(
+AllStar ~., data = AllStarPred_train, method = "glmnet",
+trControl = trainControl("cv", number = 10),
+tuneGrid = expand.grid(alpha =seq(0,1, length=10), lambda =
+10^seq(-3, 3, length = 100)))
+
+table(AllStarPred_test$AllStar)
+predict.enet= predict(enet, AllStarPred_test)
+confusionMatrix(predict.enet, AllStarPred_test$AllStar)
+
+enet_predictions_prob=predict(enet, AllStarPred_test, type="prob")
+
+pred_enet = prediction(enet_predictions_prob$`1`, AllStarPred_test$AllStar)
+performance(pred_enet, measure = "auc")@y.values
+
+
+perfE <- performance(pred_enet, measure = "tpr", x.measure = "fpr")
+
+#Plotting the ROC Curve
+plot(perfE, col = "purple")
+
+
+```
+
+AUC: 0.8379416
+Accuracy : 0.935
+
+
+
+```{r}
+#Using Variables from the Lasso Selection for Logistic Regression
+
+AllStarPred=AllStarPred %>%
+  select("Year",  "Age"    ,   "G", "X3PAr",   "FTr"   ,    "TRB."    ,    "AST."     ,   "BLK."    ,    "USG."  ,       "DWS"    ,     "WS"   ,     "DBPM"    ,     "BPM"     ,   
+"X3PA"     ,   "X3P."      ,   "X2PA"    ,    "eFG."     ,    "FT"     ,    "FT."    )
+```
+
+```{r}
+#Logistic
+
+set.seed(1)
+# str(train_sample)
+model.logistic <- glm(formula=AllStar ~ ., data=AllStarPred_train, family="binomial", maxit = 100)
+summary(model.logistic)
+```
+```{r}
+table(AllStarPred_test$AllStar)
+predict.logistic <- predict(model.logistic, AllStarPred_test, type="response")
+predict.logistic.label = factor(ifelse(predict.logistic > .5, "Yes", "No"))
+actual.label = AllStarPred_test$AllStar
+table(actual.label, predict.logistic.label)
+
+
+```
+
+
+```{r}
+library(pROC)
+ROC <- roc(AllStarPred_test$AllStar, predict.logistic)
+
+#Plotting the ROC Curve
+ROCplot = plot(ROC, col = "red")
+
+#AUC= The area under the curve
+auc(ROC)
+
+```
+AUC: 0.8015
+Accuracy: 0.865
